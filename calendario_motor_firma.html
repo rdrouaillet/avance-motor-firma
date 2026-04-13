@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario · Motor de Firma Avanzada</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F8FC;
+    --surface: #FFFFFF;
+    --surface2: #F0F3FA;
+    --border: #E2E7F0;
+    --text: #0F1626;
+    --muted: #6B7A99;
+    --hint: #A8B3CC;
+    --p1: #1B4FD8;
+    --p1-light: #EEF3FF;
+    --p1-mid: #BDCEFF;
+    --p2: #0D8A6A;
+    --p2-light: #E6F7F2;
+    --p2-mid: #7FD4BF;
+    --done: #16A34A;
+    --done-bg: #F0FDF4;
+    --warn: #C05621;
+    --warn-bg: #FFF7ED;
+    --block: #E11D48;
+    --block-bg: #FFF1F2;
+    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 24px rgba(15,22,38,.1);
+    --radius: 12px;
+    --radius-sm: 7px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: var(--shadow);
+  }
+
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: var(--p1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-mark svg { width: 20px; height: 20px; fill: white; }
+
+  .header-text { flex: 1; }
+  .header-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .progress-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-bar-outer {
+    width: 160px; height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--p1), #5B8BFF);
+    border-radius: 99px;
+    width: 0%;
+    transition: width .4s ease;
+  }
+  .progress-label { font-size: 12px; font-weight: 500; color: var(--p1); font-family: 'DM Mono', monospace; min-width: 36px; }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 65px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+  }
+
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--hint);
+    padding: 0 8px;
+    margin-bottom: 8px;
+  }
+
+  .phase-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  .phase-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 0 8px 10px;
+  }
+  .phase-badge.p1 { background: var(--p1-light); color: var(--p1); }
+  .phase-badge.p2 { background: var(--p2-light); color: var(--p2); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .15s;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); }
+  .nav-item.active { background: var(--p1-light); }
+  .nav-item.active .nav-label { color: var(--p1); font-weight: 500; }
+
+  .nav-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .nav-num.p1 { background: var(--p1); color: white; }
+  .nav-num.p2 { background: var(--p2); color: white; }
+  .nav-num.done { background: var(--done); color: white; }
+
+  .nav-label { font-size: 12.5px; color: var(--muted); flex: 1; line-height: 1.35; }
+  .nav-sem { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--hint); flex-shrink: 0; }
+
+  .nav-progress {
+    position: absolute;
+    bottom: 6px; right: 10px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--hint);
+  }
+
+  /* ── MAIN ── */
+  main { padding: 28px 32px; overflow-y: auto; }
+
+  .entregable-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: none;
+  }
+  .entregable-card.active { display: block; }
+
+  /* card header */
+  .card-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .card-num {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+  .card-num.p1 { background: var(--p1-light); color: var(--p1); }
+  .card-num.p2 { background: var(--p2-light); color: var(--p2); }
+
+  .card-title-wrap { flex: 1; }
+  .card-title { font-size: 17px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+  .tag {
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+  .tag-sem { background: var(--p1-light); color: var(--p1); }
+  .tag-time { background: #FEF9EC; color: #854D0E; }
+  .tag-prio { background: #FFF1F2; color: #9F1239; font-weight: 700; }
+  .tag-phase { background: var(--surface2); color: var(--muted); }
+  .tag-blocked { background: var(--block-bg); color: var(--block); }
+
+  .card-completion {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .completion-pct {
+    font-size: 28px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--p1);
+    line-height: 1;
+  }
+  .completion-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* mini bar */
+  .card-progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 0;
+    overflow: hidden;
+  }
+  .card-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--p1), #5B8BFF);
+    border-radius: 0;
+    transition: width .4s ease;
+  }
+  .card-progress-fill.p2 { background: linear-gradient(90deg, var(--p2), #2DD4BF); }
+
+  /* sections */
+  .card-body { padding: 0; }
+
+  .section {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section:last-child { border-bottom: none; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* timeline weeks */
+  .weeks-grid { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+  .week-cell {
+    text-align: center;
+  }
+  .week-num { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--hint); margin-bottom: 4px; }
+  .week-bar {
+    height: 8px;
+    border-radius: 3px;
+    background: var(--border);
+    transition: background .2s;
+  }
+  .week-bar.p1-active { background: var(--p1); }
+  .week-bar.p2-active { background: var(--p2); }
+
+  /* checklist */
+  .checklist { display: flex; flex-direction: column; gap: 2px; }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .15s;
+    user-select: none;
+  }
+  .check-item:hover { background: var(--surface2); }
+  .check-item.checked { opacity: .65; }
+
+  .check-box {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 5px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    background: white;
+  }
+  .check-item:hover .check-box { border-color: var(--p1); }
+  .check-item.checked .check-box {
+    background: var(--done);
+    border-color: var(--done);
+  }
+  .check-box svg { width: 10px; height: 10px; display: none; }
+  .check-item.checked .check-box svg { display: block; }
+
+  .check-text {
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.5;
+    flex: 1;
+  }
+  .check-item.checked .check-text {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .check-who {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--surface2);
+    color: var(--muted);
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  /* context info grid */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .info-box {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .info-box-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin-bottom: 4px; }
+  .info-box-value { font-size: 13px; color: var(--text); line-height: 1.4; }
+
+  /* dependency note */
+  .dep-note {
+    background: var(--block-bg);
+    border: 1px solid #FCA5A5;
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .dep-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .dep-text { font-size: 12.5px; color: var(--block); line-height: 1.5; }
+
+  /* nav buttons */
+  .card-nav {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--surface2); color: var(--text); }
+  .btn.primary {
+    background: var(--p1);
+    border-color: var(--p1);
+    color: white;
+  }
+  .btn.primary:hover { background: #1340C0; }
+
+  /* empty state */
+  .empty { text-align: center; padding: 80px 20px; color: var(--muted); }
+  .empty h2 { font-size: 20px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+  .empty p { font-size: 14px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  </div>
+  <div class="header-text">
+    <div class="header-title">Motor de Firma Electrónica Avanzada</div>
+    <div class="header-sub">Poder Judicial del Estado de Coahuila · DrouTech Solutions · 14 semanas</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="global-bar"></div>
+    </div>
+    <div class="progress-label" id="global-label">0%</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:8px;padding-left:16px;border-left:1px solid var(--border);">
+    <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap;">Cargando…</span>
+    <button onclick="refresh()" title="Actualizar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px;color:var(--muted);">↺</button>
+    <button onclick="changeUser()" title="Cambiar usuario" style="background:var(--p1-light);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:500;color:var(--p1);white-space:nowrap;">👤 <span id="user-badge">—</span></button>
+  </div>
+</header>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Etapa 1 · Sem 1–6</div>
+      <div class="phase-badge p1">● Actualización y migración base</div>
+
+      <div class="nav-item active" data-id="e1" onclick="showCard('e1')">
+        <div class="nav-num p1" id="nav-num-e1">E1</div>
+        <div class="nav-label">Lectura FIREL última versión</div>
+        <div class="nav-sem">S1</div>
+      </div>
+      <div class="nav-item" data-id="e2" onclick="showCard('e2')">
+        <div class="nav-num p1" id="nav-num-e2">E2</div>
+        <div class="nav-label">Evidencia criptográfica + logos</div>
+        <div class="nav-sem">S2</div>
+      </div>
+      <div class="nav-item" data-id="e3" onclick="showCard('e3')">
+        <div class="nav-num p1" id="nav-num-e3">E3</div>
+        <div class="nav-label">Migración MySQL → PostgreSQL</div>
+        <div class="nav-sem">S3</div>
+      </div>
+      <div class="nav-item" data-id="e4" onclick="showCard('e4')">
+        <div class="nav-num p1" id="nav-num-e4">E4</div>
+        <div class="nav-label">Actualización de componentes</div>
+        <div class="nav-sem">S4–5</div>
+      </div>
+      <div class="nav-item" data-id="e5" onclick="showCard('e5')">
+        <div class="nav-num p1" id="nav-num-e5">E5</div>
+        <div class="nav-label">Migración DNS → Cloudflare</div>
+        <div class="nav-sem">S6</div>
+      </div>
+    </div>
+
+    <div class="phase-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Etapa 2 · Sem 7–14</div>
+      <div class="phase-badge p2">● Alta disponibilidad</div>
+
+      <div class="nav-item" data-id="e6" onclick="showCard('e6')">
+        <div class="nav-num p2" id="nav-num-e6">E6</div>
+        <div class="nav-label">Ambiente HA + balanceo de cargas</div>
+        <div class="nav-sem">S7–9</div>
+      </div>
+      <div class="nav-item" data-id="e7" onclick="showCard('e7')">
+        <div class="nav-num p2" id="nav-num-e7">E7</div>
+        <div class="nav-label">Validación APIs RESTful</div>
+        <div class="nav-sem">S10</div>
+      </div>
+      <div class="nav-item" data-id="e8" onclick="showCard('e8')">
+        <div class="nav-num p2" id="nav-num-e8">E8</div>
+        <div class="nav-label">BD PostgreSQL HA + respaldos</div>
+        <div class="nav-sem">S11</div>
+      </div>
+      <div class="nav-item" data-id="e9" onclick="showCard('e9')">
+        <div class="nav-num p2" id="nav-num-e9">E9</div>
+        <div class="nav-label">Firma masiva (batch)</div>
+        <div class="nav-sem">S12–13</div>
+      </div>
+      <div class="nav-item" data-id="e10" onclick="showCard('e10')">
+        <div class="nav-num p2" id="nav-num-e10">E10</div>
+        <div class="nav-label">Transferencia de conocimiento</div>
+        <div class="nav-sem">S14</div>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content">
+
+    <!-- E1 -->
+    <div class="entregable-card active" id="card-e1">
+      <div class="card-header">
+        <div class="card-num p1">E1</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Lectura firma electrónica FIREL última versión</div>
+          <div class="card-meta">
+            <span class="tag tag-prio">🔴 Prioridad 1</span>
+            <span class="tag tag-sem">Semana 1</span>
+            <span class="tag tag-time">~1 semana</span>
+            <span class="tag tag-phase">Etapa 1</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e1">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill" id="bar-e1" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e1">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Descargar aplicativo y base de datos del Poder Judicial</div><div class="check-who">Julio H.</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Configurar ambiente local de desarrollo (NetBeans + MySQL + Tomcat)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Poner el aplicativo en control de versiones (Git)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Recibir certificados y archivos FIREL última versión (con contraseñas)</div><div class="check-who">Juan Luis</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Descomponer certificados y analizar estructura de lectura</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Adaptar motor de firma para leer nueva versión FIREL (retrocompatible)</div><div class="check-who">DrouTech</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Contexto y dependencias</div>
+          <div class="dep-note" style="margin-bottom:12px;">
+            <div class="dep-icon">⚠️</div>
+            <div class="dep-text"><strong>Bloqueador crítico:</strong> Se requieren los certificados FIREL de Juan Luis antes de comenzar la adaptación del motor. Julio Hernández debe solicitarlos hoy mismo.</div>
+          </div>
+          <div class="info-grid">
+            <div class="info-box"><div class="info-box-label">Ecosistema actual</div><div class="info-box-value">NetBeans, MySQL, Tomcat, Java 1.8, Jasper Reports</div></div>
+            <div class="info-box"><div class="info-box-label">Entregable esperado</div><div class="info-box-value">Motor capaz de leer FIREL v. nueva y versiones anteriores</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e10')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e2')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E2 -->
+    <div class="entregable-card" id="card-e2">
+      <div class="card-header">
+        <div class="card-num p1">E2</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Evidencia criptográfica + actualización de logos</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 2</span>
+            <span class="tag tag-time">~2.7 semanas</span>
+            <span class="tag tag-phase">Etapa 1</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e2">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill" id="bar-e2" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e2">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Reunión con Juan Luis para validar campos del nuevo reporte federado</div><div class="check-who">Julio H. + DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Verificar que los 3 campos adicionales existen en la BD (sin datos faltantes)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar diseño del reporte de evidencia criptográfica en Jasper Reports (E2.1)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Estandarizar formato al modelo federal (agregar los 3 campos)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Reemplazar logos en reportes de salida con imágenes institucionales actualizadas (E2.2)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Validación final con Julio Hernández y Juan Luis</div><div class="check-who">Todos</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Notas técnicas</div>
+          <div class="info-grid">
+            <div class="info-box"><div class="info-box-label">Tecnología</div><div class="info-box-value">Jasper Reports sobre MySQL. Archivos .jrxml a modificar.</div></div>
+            <div class="info-box"><div class="info-box-label">Riesgo principal</div><div class="info-box-value">Que algún campo de los 3 nuevos no exista en la BD (dato no guardado históricamente)</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e1')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e3')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E3 -->
+    <div class="entregable-card" id="card-e3">
+      <div class="card-header">
+        <div class="card-num p1">E3</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Migración de BD MySQL → PostgreSQL</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 3</span>
+            <span class="tag tag-time">~2 semanas</span>
+            <span class="tag tag-phase">Etapa 1</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e3">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill" id="bar-e3" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e3">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Crear scripts de migración: tablas, índices, rutinas, funciones y procedimientos</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Ejecutar migración completa en ambiente local ("laboratorio de migración")</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Validar integridad de datos (comparar registros MySQL vs PostgreSQL)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Configurar replicación maestro-esclavo en PostgreSQL (preparación para prod.)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Planificar ventana de migración en producción con Poder Judicial (viernes–domingo)</div><div class="check-who">Julio H.</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Notas técnicas</div>
+          <div class="info-grid">
+            <div class="info-box"><div class="info-box-label">Origen → Destino</div><div class="info-box-value">MySQL (versión actual) → PostgreSQL 18</div></div>
+            <div class="info-box"><div class="info-box-label">Ventana de producción</div><div class="info-box-value">Mínimo 3 días: viernes tarde, sábado y domingo</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e2')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e4')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E4 -->
+    <div class="entregable-card" id="card-e4">
+      <div class="card-header">
+        <div class="card-num p1">E4</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Actualización de componentes del motor</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semanas 4–5</span>
+            <span class="tag tag-time">~6 semanas-hombre</span>
+            <span class="tag tag-phase">Etapa 1</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e4">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill" id="bar-e4" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e4">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Migrar base de datos a PostgreSQL 18 usando scripts del E3</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar servidor Tomcat a versión 10 y probar arranque del aplicativo</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar Java a versión 10 o superior (desde v1.8 actual)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar OpenSSL a versión 3.0 y validar que la firma funciona (evitar regresión a v1.2)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Pruebas integrales del motor con todos los componentes actualizados</div><div class="check-who">DrouTech + Julio H.</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Componentes a actualizar</div>
+          <div class="info-grid">
+            <div class="info-box"><div class="info-box-label">Base de datos</div><div class="info-box-value">MySQL → PostgreSQL 18</div></div>
+            <div class="info-box"><div class="info-box-label">Servidor de aplicaciones</div><div class="info-box-value">Tomcat (actual) → Tomcat 10</div></div>
+            <div class="info-box"><div class="info-box-label">Lenguaje</div><div class="info-box-value">Java 1.8 → Java 10+</div></div>
+            <div class="info-box"><div class="info-box-label">Criptografía</div><div class="info-box-value">OpenSSL 1.2 → OpenSSL 3.0</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e3')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e5')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E5 -->
+    <div class="entregable-card" id="card-e5">
+      <div class="card-header">
+        <div class="card-num p1">E5</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Migración DNS a plataforma Cloudflare</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 6</span>
+            <span class="tag tag-time">~1 semana</span>
+            <span class="tag tag-phase">Etapa 1</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e5">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill" id="bar-e5" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar p1-active"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e5">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar cotización Cloudflare (balanceador inteligente + WAF, ~$20,000/año)</div><div class="check-who">El grupo</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Identificar todos los dominios y subdominios del Poder Judicial a migrar</div><div class="check-who">Julio H.</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Configurar wildcard (*.pjcoahuila.gob.mx) en Cloudflare</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Verificar compatibilidad del certificado SSL de Cloudflare con servidores (sin cambios en servidores)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Migrar registros DNS y validar resolución de todos los servicios</div><div class="check-who">DrouTech</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e4')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e6')">Etapa 2 →</button>
+      </div>
+    </div>
+
+    <!-- E6 -->
+    <div class="entregable-card" id="card-e6">
+      <div class="card-header">
+        <div class="card-num p2">E6</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Ambiente balanceado y alta disponibilidad</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semanas 7–9</span>
+            <span class="tag tag-time">~4 semanas</span>
+            <span class="tag tag-phase">Etapa 2</span>
+            <span class="tag tag-blocked">Requiere servidores físicos</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e6">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill p2" id="bar-e6" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e6">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Recibir acceso a servidores físicos del Poder Judicial</div><div class="check-who">Julio H.</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Configurar balanceador de cargas con distribución round-robin (2 nodos mínimo)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Integrar Cloudflare como front con 2 IPs distintas y Fortinet</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Probar failover automático (caída de 1 nodo → redirige a otro)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Documentar scripts para agregar nuevos nodos bajo demanda</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Documentar instalación, configuración y bitácora de trabajo</div><div class="check-who">DrouTech</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Bloqueadores</div>
+          <div class="dep-note">
+            <div class="dep-icon">🔒</div>
+            <div class="dep-text"><strong>Bloqueado hasta:</strong> que el Poder Judicial tenga disponibles los servidores físicos. Depende también de que E5 (Cloudflare) esté completado.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e5')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e7')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E7 -->
+    <div class="entregable-card" id="card-e7">
+      <div class="card-header">
+        <div class="card-num p2">E7</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Validación APIs RESTful y Web Services</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 10</span>
+            <span class="tag tag-time">~2 semanas</span>
+            <span class="tag tag-phase">Etapa 2</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e7">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill p2" id="bar-e7" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e7">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Inventariar todas las APIs RESTful y Web Services existentes del motor</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Ejecutar pruebas de integración sobre el nuevo esquema de balanceo de cargas</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Validar respuestas correctas en escenario de alta disponibilidad (nodo activo/inactivo)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Documentar resultado de pruebas (100% APIs funcionando al entregar)</div><div class="check-who">DrouTech</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Nota</div>
+          <div class="info-box"><div class="info-box-label">Alcance</div><div class="info-box-value">No se crean APIs nuevas. Solo validación exhaustiva de las APIs existentes bajo el nuevo esquema de HA.</div></div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e6')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e8')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E8 -->
+    <div class="entregable-card" id="card-e8">
+      <div class="card-header">
+        <div class="card-num p2">E8</div>
+        <div class="card-title-wrap">
+          <div class="card-title">BD PostgreSQL en HA + estrategia de respaldos</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 11</span>
+            <span class="tag tag-time">~1 semana</span>
+            <span class="tag tag-phase">Etapa 2</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e8">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill p2" id="bar-e8" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e8">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Configurar clúster PostgreSQL en producción con 2 servidores (maestro-esclavo)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Validar replicación automática en tiempo real entre nodos</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Diseñar estrategia: full semanal/quincenal + diferenciales diarios</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Implementar política de retención: últimas N versiones online, historial a archivo/cintas</div><div class="check-who">DrouTech</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e7')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e9')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E9 -->
+    <div class="entregable-card" id="card-e9">
+      <div class="card-header">
+        <div class="card-num p2">E9</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Firma masiva (batch) de documentos pendientes</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semanas 12–13</span>
+            <span class="tag tag-time">~1 semana</span>
+            <span class="tag tag-phase">Etapa 2</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e9">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill p2" id="bar-e9" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar p2-active"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e9">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Reunión con Eduardo y Juan Luis para definir requerimiento detallado del módulo batch</div><div class="check-who">Julio H. + DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Desarrollar módulo de firma masiva (batch) para documentos pendientes en cola</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Actualizar proceso de validación de certificados para procesamiento masivo</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Pruebas con volúmenes altos (escenario de 1,000+ documentos pendientes)</div><div class="check-who">DrouTech + Julio H.</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e8')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e10')">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- E10 -->
+    <div class="entregable-card" id="card-e10">
+      <div class="card-header">
+        <div class="card-num p2">E10</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Transferencia de conocimiento y memoria técnica</div>
+          <div class="card-meta">
+            <span class="tag tag-sem">Semana 14</span>
+            <span class="tag tag-time">~1 semana</span>
+            <span class="tag tag-phase">Etapa 2 · Cierre</span>
+          </div>
+        </div>
+        <div class="card-completion">
+          <div class="completion-pct" id="pct-e10">0%</div>
+          <div class="completion-label">completado</div>
+        </div>
+      </div>
+      <div class="card-progress-bar"><div class="card-progress-fill p2" id="bar-e10" style="width:0%"></div></div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Línea de tiempo</div>
+          <div class="weeks-grid">
+            <div class="week-cell"><div class="week-num">S1</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S2</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S3</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S4</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S5</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S6</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S7</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S8</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S9</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S10</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S11</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S12</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S13</div><div class="week-bar"></div></div>
+            <div class="week-cell"><div class="week-num">S14</div><div class="week-bar p2-active"></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Checklist de actividades</div>
+          <div class="checklist" id="tasks-e10">
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Preparar memoria técnica: documentación de arquitectura final, manuales y procedimientos</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Taller: cómo levantar nodos de balanceo y agregar nodos al pool de aplicaciones</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Taller: troubleshooting (motor no firma, caída de nodo, falla de BD)</div><div class="check-who">DrouTech</div></div>
+            <div class="check-item" onclick="toggle(this)"><div class="check-box"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-text">Entrega formal de documentación y firma de aceptación final del proyecto</div><div class="check-who">Todos</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="btn" onclick="showCard('e9')">← Anterior</button>
+        <button class="btn primary" onclick="showCard('e1')">↺ Inicio</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxywZak2LUCTxhRmrRd-Y9BMaaQhyB9rpZqZualIpnn9e8_G7X3P0PSuFeWL7abpxGWrg/exec';
+  let state = {};
+  let currentUser = localStorage.getItem('motorFirma_usuario') || '';
+
+  // ── Usuario ───────────────────────────────────────────────────────────────
+  function getOrAskUser() {
+    if (currentUser) return currentUser;
+    const name = prompt('¿Cómo te llamas? (aparecerá en el historial del Sheet)', '');
+    currentUser = (name || 'anónimo').trim();
+    localStorage.setItem('motorFirma_usuario', currentUser);
+    updateUserBadge();
+    return currentUser;
+  }
+
+  function updateUserBadge() {
+    const b = document.getElementById('user-badge');
+    if (b) b.textContent = currentUser || '—';
+  }
+
+  function changeUser() {
+    const name = prompt('Cambiar nombre:', currentUser);
+    if (name !== null) {
+      currentUser = (name || 'anónimo').trim();
+      localStorage.setItem('motorFirma_usuario', currentUser);
+      updateUserBadge();
+    }
+  }
+
+  // ── Sync status ───────────────────────────────────────────────────────────
+  function setSyncStatus(s) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    const map = {
+      idle:    ['Sincronizado ✓', 'var(--done)'],
+      saving:  ['Guardando…',     'var(--muted)'],
+      loading: ['Cargando…',      'var(--muted)'],
+      error:   ['Sin conexión',   'var(--block)'],
+    };
+    const [text, color] = map[s] || map.idle;
+    el.textContent = text;
+    el.style.color = color;
+  }
+
+  // ── Cargar desde Sheets ───────────────────────────────────────────────────
+  async function loadFromSheets() {
+    setSyncStatus('loading');
+    try {
+      const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+      const remote = await res.json();
+      state = remote;
+      applyState();
+      setSyncStatus('idle');
+    } catch (e) {
+      setSyncStatus('error');
+      try { state = JSON.parse(localStorage.getItem('motorFirma_v1')) || {}; } catch { state = {}; }
+      applyState();
+    }
+  }
+
+  function applyState() {
+    document.querySelectorAll('.check-item').forEach(i => i.classList.remove('checked'));
+    Object.entries(state).forEach(([id, checks]) => {
+      const tasks = document.querySelectorAll(`#tasks-${id} .check-item`);
+      Object.entries(checks).forEach(([idx, checked]) => {
+        if (tasks[idx] && checked) tasks[idx].classList.add('checked');
+      });
+      updateProgress(id);
+    });
+    updateGlobal();
+  }
+
+  // ── Guardar en Sheets ─────────────────────────────────────────────────────
+  async function saveToSheets(entregable, idx, checked) {
+    setSyncStatus('saving');
+    localStorage.setItem('motorFirma_v1', JSON.stringify(state));
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entregable, idx, checked, usuario: currentUser }),
+      });
+      setSyncStatus('idle');
+    } catch (e) {
+      setSyncStatus('error');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    }
+  }
+
+  // ── Toggle ────────────────────────────────────────────────────────────────
+  function toggle(item) {
+    getOrAskUser();
+    item.classList.toggle('checked');
+    const id  = item.closest('.entregable-card').id.replace('card-', '');
+    const idx = [...item.parentNode.children].indexOf(item);
+    if (!state[id]) state[id] = {};
+    state[id][idx] = item.classList.contains('checked');
+    updateProgress(id);
+    updateGlobal();
+    saveToSheets(id, idx, state[id][idx]);
+  }
+
+  // ── Progreso ──────────────────────────────────────────────────────────────
+  function updateProgress(id) {
+    const tasks = document.querySelectorAll(`#tasks-${id} .check-item`);
+    const done  = document.querySelectorAll(`#tasks-${id} .check-item.checked`).length;
+    const pct   = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+    document.getElementById(`pct-${id}`).textContent = pct + '%';
+    document.getElementById(`bar-${id}`).style.width  = pct + '%';
+    const nav = document.getElementById(`nav-num-${id}`);
+    if (pct === 100) { nav.classList.add('done'); nav.classList.remove('p1','p2'); }
+    else { nav.classList.remove('done'); nav.classList.add(['e1','e2','e3','e4','e5'].includes(id)?'p1':'p2'); }
+  }
+
+  function updateGlobal() {
+    const all  = document.querySelectorAll('.check-item').length;
+    const done = document.querySelectorAll('.check-item.checked').length;
+    const pct  = all ? Math.round(done / all * 100) : 0;
+    document.getElementById('global-bar').style.width   = pct + '%';
+    document.getElementById('global-label').textContent = pct + '%';
+  }
+
+  // ── Navegación ────────────────────────────────────────────────────────────
+  function showCard(id) {
+    document.querySelectorAll('.entregable-card').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('card-' + id).classList.add('active');
+    document.querySelector(`[data-id="${id}"]`).classList.add('active');
+    document.getElementById('main-content').scrollTop = 0;
+  }
+
+  function refresh() { loadFromSheets(); }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    updateUserBadge();
+    loadFromSheets();
+    setInterval(loadFromSheets, 60000); // auto-refresh cada 60s
+  });
+</script>
+</body>
+</html>
